@@ -804,7 +804,7 @@ public class SystemProcessor : IFactionProcessor
 				shop.NumberOfDaysToRefresh--;
 				if (shop.NumberOfDaysToRefresh <= 0)
 				{
-					shop.RefreshStock(GameWorld.instance.PlayerProfile.GetDifficultyLevelMeasurement_CurrentRating(), 1);
+					shop.RefreshStock(GameWorld.instance.PlayerProfile.GetDifficultyLevelMeasurement_CurrentRating(), 1); // MOD 2026-09-30：补货量 1→10（已改）；周期重置=ShopRefreshDays（已改短）
 					shop.NumberOfDaysToRefresh = PlayerProfile.ShopRefreshDays;
 				}
 			}

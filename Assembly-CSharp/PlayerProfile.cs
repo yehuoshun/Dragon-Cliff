@@ -2730,6 +2730,13 @@ public class PlayerProfile
 	public static readonly int GaugeResetGapDays = 5;
 
 	// Token: 0x04001F23 RID: 7971
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【商店进货周期·已改】原版 20 天刷新 1 个商品（SystemProcessor.ShopRefresh 每天倒计时）。
+	// 已改短（具体天数以老板 dnSpy 改动为准）+ 每次补货 10 个（SystemProcessor 两处 + Shop.cs 建造处）。
+	// dnSpy：Edit Method .cctor 里改赋值，或 Edit Field 改初值（ldc.i4.s 20 → 目标天数）。
+	// 配套：SystemProcessor.ShopRefresh 的 RefreshStock(..., 1) → (..., 10)；
+	//   SystemProcessor 通关补货 + Shop 建造补货同理。详见 change.md §1.3。
+	// =============================================================
 	public static readonly int ShopRefreshDays = 20;
 
 	// Token: 0x04001F24 RID: 7972

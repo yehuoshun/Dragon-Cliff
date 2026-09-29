@@ -99,6 +99,28 @@ bool flag = ((resourceCategory.IsWeapon() || resourceCategory.IsArmor()) && corr
 
 **边界**：配合 90% 远古梯度，约 90% 饰品星辰；10% 非远古不星辰。顺带：商店/掉落的 Ancient 武器/护甲/卷轴（tier>35）也必定星辰。
 
+## 1.3 商店进货频率与补货量
+
+> ✅ **已改（2026-09-30）**：进货周期改短 + 每次补 10 个商品（老板 dnSpy 已实施）。
+
+**目的**：商店刷新太慢（原版 20 天补 1 个），改为高频大补——配合 §1.2 商店饰品必定星辰，更快刷荣光/装备。
+
+**机制**：
+- 周期：`PlayerProfile.ShopRefreshDays = 20`（天），`SystemProcessor.ShopRefresh` 每天倒计时，归零补货后重置
+- 每次补货量：`RefreshStock(measurement, N)` 的 N（原版 1）
+- 额外：**通关冒险**也补 1 个（`SystemProcessor.cs` :699）；**商店建造时**补 1 个（`Shop.cs` :241）
+
+**已改位置（3 处）**：
+| 位置 | 原值 | 已改 |
+|---|---|---|
+| `PlayerProfile.ShopRefreshDays` | 20 天 | 改短（值以老板改动为准） |
+| `SystemProcessor.ShopRefresh` 补货量 | 1 | **10** |
+| （通关/建造补货量同法可改） | 1 | 未动 |
+
+**dnSpy 改法**：
+- 周期：Edit Field / .cctor 改 `ldc.i4.s 20` → 目标天数（static readonly）
+- 补货量：`RefreshStock(..., 1)` 的常量 1 → 10（`ldc.i4.1` → `ldc.i4.s 10`）
+
 ---
 
 # 二、居民类
