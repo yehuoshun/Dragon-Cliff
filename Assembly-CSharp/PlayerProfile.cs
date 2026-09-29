@@ -2742,6 +2742,16 @@ public class PlayerProfile
 	public static readonly double ReleaseAdventurerGainPointsRatio = 0.7;
 
 	// Token: 0x04001F27 RID: 7975
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 居民 buff 上限一族（共 6 个，全是 public static readonly double，可任意改大）。
+	// dnSpy 修改：改【静态构造函数 static PlayerProfile()】里的赋值，一行一个值，
+	//   用 Edit Method（别用 Edit Class，PlayerProfile 全是 lambda 会报 Invalid token '<'）。
+	// 语义：加成超过上限被 clamp，溢出部分单独记账 ExceededValue 显示；
+	//   改大上限后溢出值自动变小，UI 自适应。
+	// 带 1.0 基数的（生产/神心/修炼点）clamp 比较用 Max+1.0 → 加成封顶 X% = 总倍率 1+X。
+	// 注意：MaxChestBoost 只用于 UI 显示上限；宝箱祝福真 clamp 走 MaxDivineHeartBoost；
+	//   Chest._luckBoostKey（宝箱祝福累加）本身无 clamp，可无限叠。
+	// =============================================================
 	public static readonly double MaxReisdentPriceBoost = 20.0;
 
 	// Token: 0x04001F28 RID: 7976
