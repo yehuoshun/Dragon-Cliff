@@ -1866,6 +1866,14 @@ public class DifficultyLevelMeasurement
 	}
 
 	// Token: 0x06001EF7 RID: 7927 RVA: 0x000D9384 File Offset: 0x000D7784
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 掉落宝石等级修改点（dnSpy 改 DLL，patch 路线已废弃）。
+	// 原版：按星级+难度给等级，3星档难度>800 封顶 return 20，永远到不了 25。
+	// 25 = ItemExtensions.MaxGemLevel（合成/锻造上限）；
+	// GemGeneratorBase.GenerateGem 会把 level>=25 钳到 25，直接 return 25 不会溢出。
+	// dnSpy 操作：右键本方法 → Edit Method（C# 单方法编辑，避开 <> 编译产物报错）
+	//   → 方法体整个替换为：return 25;
+	// =============================================================
 	private static int GetGemLevel(double difficultyValue, int starRating)
 	{
 		if (starRating == 1)
