@@ -509,6 +509,42 @@ public bool ExpandItemSockets(Item socketBatcher)
 
 **注意**：本次修改绕过原版上限（`CanAddMoreManualSockets` 武器 <4 / 护甲 <3），装备可超上限加孔；配合 §4.1 饰品镶宝石 + 打孔，饰品也能直接 50 孔。
 
+## 4.4 速行者戒指：先手行动条加强
+
+> ✅ **已改验证成功（2026-09-30）**：测试全部通过。
+
+**背景**：速行者（LightningRunner）5/6/7 号戒指的招牌特效 = **每回合开始行动条提前**（`FirstHandEffectData`），不是击退（击退是星辰特效）。1~4 号只有敏捷无特效。
+
+**位置**：三个模板同款方法（只改用的号即可）：
+- `LightningRunnerFiveTemplate.cs`（5 号，敏捷 500）
+- `LightningRunnerSixTemplate.cs`（6 号，敏捷 700）
+- `LightningRunnerSevenTemplate.cs`（7 号，敏捷 900）
+
+**修改前**（原版：基础 5% + 品质×1%，远古 ~10%）：
+```csharp
+public override List<ISpecialEffectDataLoad> GetNormalLevelSpecialEffectDataLoads(QualityGrade grade)
+{
+    double num = 0.05 + Convert.ToDouble((int)grade) * 0.01;
+    return new List<ISpecialEffectDataLoad>
+    {
+        new FirstHandEffectData
+        {
+            IsStarEf = new bool?(false),
+            StartProgress = num * (double)UnityEngine.Random.Range(0.8f, 1f)
+        }
+    };
+}
+```
+
+**修改后**（基础 20% + 品质×3%，远古 ~35%；只改 num 一行）：
+```csharp
+double num = 0.2 + Convert.ToDouble((int)grade) * 0.03;
+```
+
+**机制**（`FirstHandEffectProcess`）：监听 `TurnSetupCompleted` → `PushTargetProgress(自己, StartProgress)` —— 每回合行动条提前。品质越高推越多（普通 23% / 远古 35%）。
+
+**dnSpy**：Edit Method (C#) 改 num 行即可（无 lambda）。想固定值直接 `StartProgress = 0.5`。
+
 ---
 
 # 五、风险与副作用清单（改前必读）

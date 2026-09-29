@@ -53,6 +53,13 @@ public class LightningRunnerFiveTemplate : AccessoryTemplateBase
 	}
 
 	// Token: 0x060027C1 RID: 10177 RVA: 0x001193A8 File Offset: 0x001177A8
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【速行者先手·已改验证】普通特效 FirstHandEffectData：每回合开始（TurnSetupCompleted）
+	//   行动条提前 StartProgress。原版 num = 0.05 + grade×0.01（远古~10%），
+	//   已改为 0.2 + grade×0.03（普通23%/远古35%），乘 Random.Range(0.8,1) 浮动。
+	// dnSpy: Edit Method (C#) 改 num 那行即可（方法无 lambda）。
+	// 星辰特效（5/6/7号）另带命中击退 PushOnHitData 20~25%，与此独立。
+	// =============================================================
 	public override List<ISpecialEffectDataLoad> GetNormalLevelSpecialEffectDataLoads(QualityGrade grade)
 	{
 		double num = 0.05 + Convert.ToDouble((int)grade) * 0.01;
