@@ -113,9 +113,11 @@ MaxPracticePointsBoost  = 99999.0;
 
 **说明**：改大后溢出值自动重算，UI 自适应；这些是"总和闸门"，单兵强度看 2.4。注意 `MaxChestBoost` 只用于 UI 显示上限，宝箱祝福真 clamp 走 `MaxDivineHeartBoost`；`Chest._luckBoostKey`（宝箱祝福累加）本身无 clamp，可无限叠。
 
-## 2.3 必远古：全员品质 Ancient
+## 2.3 品质梯度：90% 远古 + 非远古保底（合成不卡）
 
-**目的**：所有生成物品/居民直接判为远古品质。
+> ✅ 已改（2026-09-30 待验证）：梯度版，合成材料不断供。
+
+**目的**：绝大多数掉落/居民判为远古，同时保留 10% 非远古材料——`IsCombineable` 要求三件至少一件非远古，有非远古掉落才能继续合成（详见 4.1 的坑）。
 
 **位置**：`GenerationDistribution` 类 → `GetGrade()`（public QualityGrade）
 
@@ -144,15 +146,34 @@ public QualityGrade GetGrade()
 }
 ```
 
-**修改后**（Edit Method 整体替换）：
+**修改后**（Edit Method 整体替换；GetGrade 无 lambda，Edit Method (C#) 可改）：
 ```csharp
 public QualityGrade GetGrade()
 {
-    return QualityGrade.Ancient;
+    float num = UnityEngine.Random.Range(0f, 1f);
+    if ((double)num < 0.9)
+    {
+        return QualityGrade.Ancient;      // 90% 远古
+    }
+    if ((double)num < 0.95)
+    {
+        return QualityGrade.Legendary;    // 5% 传奇
+    }
+    if ((double)num < 0.975)
+    {
+        return QualityGrade.Epic;         // 2.5% 史诗
+    }
+    if ((double)num < 0.99)
+    {
+        return QualityGrade.Rare;         // 1.5% 稀有
+    }
+    return QualityGrade.Normal;           // 1% 普通
 }
 ```
 
-> ⚠️ **必远古的代价（重要）**：品质入口一刀切后，**铁匠合成/合成任务会卡死**（原版 `IsCombineable` 要求三件至少一件非远古，全远古断供）。详见 4.1。若不需要合成可接受；需要合成则别开必远古。
+> ⚠️ **概率坑（实战踩过）**：判定必须用 `<` 低分位区间。写 `>= 0.9` 只覆盖 0.9~1.0 的 **10%**，普通反而占 81%——远古率暴跌。90% 远古 = `num < 0.9`。
+
+> ⚠️ **必远古的代价（历史）**：若改回一刀切 `return QualityGrade.Ancient;`，**铁匠合成/合成任务会卡死**（全远古断供，详见 4.1）。梯度版就是为避开这个坑。
 
 ## 2.4 居民品质系数区间（单兵倍率主改点）
 

@@ -49,11 +49,14 @@ public class GenerationDistribution
 	}
 
 	// Token: 0x060029C1 RID: 10689 RVA: 0x0011C580 File Offset: 0x0011A980
-	// ==================== MOD 标记 2026-09-29 ====================
-	// 【必远古】品质入口一刀切：全部物品/居民直接判为 Ancient。
-	// dnSpy: Edit Method 本方法，方法体整体替换为 return QualityGrade.Ancient;
-	// ⚠️ 副作用：铁匠合成/合成任务会卡死（BuildingExtensions.IsCombineable 要求
-	//   三件至少一件非远古，全远古断供）——详见仓库根目录 change.md §4.1。
+	// ==================== MOD 标记 2026-09-30（更新） ====================
+	// 【品质梯度·已改待验证】原必远古一刀切废弃，现为 90% 远古 + 非远古保底：
+	//   num < 0.9 → Ancient(90%) / < 0.95 → Legendary(5%) / < 0.975 → Epic(2.5%)
+	//   < 0.99 → Rare(1.5%) / 其余 Normal(1%)。
+	// dnSpy: Edit Method 本方法，方法体整体替换为下方梯度版。
+	// ⚠️ 概率坑：判定必须用 < 低分位；写 >= 0.9 只覆盖 10%，远古率暴跌（实战踩过）。
+	// ⚠️ 合成：10% 非远古材料保住 IsCombineable（三件至少一件非远古），
+	//   避免必远古时合成任务卡死（详见仓库根目录 change.md §4.1）。
 	// =============================================================
 	public QualityGrade GetGrade()
 	{
