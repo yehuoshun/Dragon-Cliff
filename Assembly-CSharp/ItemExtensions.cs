@@ -1577,6 +1577,17 @@ public static class ItemExtensions
 	}
 
 	// Token: 0x06002277 RID: 8823 RVA: 0x000FCDEC File Offset: 0x000FB1EC
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【饰品镶宝石】插槽生成：原版饰品（Accessory）强制 0 插槽（下面三元），
+	//   品质再高也白搭。删掉三元让饰品也走品质插槽表：
+	//   普通 0 / 稀有 20%1 / 史诗 50%1 / 传奇 80%1·20%2 / 远古 2。
+	// dnSpy：优先 Edit Method (C#) 整体替换（本方法无 lambda，可编译）。
+	//   IL 备选：把三元编译出的 brtrue（Accessory 跳 0 分支）改成 nop，
+	//   让 Accessory 也走 WeightedRandomSelect 分支（ldc.i4.0 成死代码无害）。
+	// ⚠️ 只改这里不够：可镶判定 GetSocketableGems（Item.cs）仍排除饰品，
+	//   见该文件 MOD 标注。两处都改才能镶。
+	// 影响：只作用于新生成饰品，已有库存不追溯。
+	// =============================================================
 	private static List<ItemSocket> SocketGenerations(ResourceType type, QualityGrade grade)
 	{
 		Dictionary<QualityGrade, List<GemSocketNumberPresentable>> dictionary = new Dictionary<QualityGrade, List<GemSocketNumberPresentable>>

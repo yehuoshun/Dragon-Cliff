@@ -710,6 +710,17 @@ public class Item : NullableObject
 	}
 
 	// Token: 0x06002C55 RID: 11349 RVA: 0x00122B4C File Offset: 0x00120F4C
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【饰品镶宝石】可镶宝石判定只放行武器/护甲，饰品（Accessory）被排除。
+	// dnSpy Edit Method Body (IL)（本方法含 lambda，Edit Method C# 必炸）：
+	//   在 IsArmor() 的 brtrue 之后插入 4 条指令：
+	//     ldloc.0            // resourceCategory（第一个局部变量）
+	//     ldc.i4.s 13        // ResourceCategory.Accessory 枚举值 = 13
+	//     ceq
+	//     brtrue <原 if 体标签>  // 跳到与 IsWeapon/IsArmor 相同的成功路径
+	// 注意：只改这里不够，插槽生成在 SocketGenerations（ItemExtensions.cs）
+	//   饰品仍是 0 插槽，见该文件 MOD 标注。两处都改才能镶。
+	// =============================================================
 	public List<Item> GetSocketableGems()
 	{
 		ResourceCategory resourceCategory = this.Type.GetResourceCategory();

@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-09-29（v3，按领域分类整理；v2 已移除合成修复章节）
+> 版本：2026-09-30（v4，新增装备类：饰品镶宝石；v2 已移除合成修复章节）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -295,7 +295,53 @@ public void Init(int level, int maxLevel)
 
 ---
 
-# 四、风险与副作用清单（改前必读）
+# 四、装备类
+
+## 4.1 饰品镶宝石（原版 0 插槽）
+
+**目的**：饰品（Accessory）也能镶嵌宝石。原版饰品强制 0 插槽，品质再高也白搭。
+
+**要改 2 处，缺一不可**：
+
+**① 插槽生成**（`ItemExtensions.SocketGenerations`，private static）
+
+**修改前**（饰品强制 0 插槽）：
+```csharp
+int num = (type.GetResourceCategory() == ResourceCategory.Accessory) ? 0 : dictionary[grade].WeightedRandomSelect<GemSocketNumberPresentable>().NumberOfSockets;
+```
+
+**修改后**（饰品走品质插槽表：普通 0 / 稀有 20%1 / 史诗 50%1 / 传奇 80%1·20%2 / 远古 2）：
+```csharp
+int num = dictionary[grade].WeightedRandomSelect<GemSocketNumberPresentable>().NumberOfSockets;
+```
+
+**dnSpy**：本方法无 lambda → 优先 **Edit Method (C#)** 整体替换。IL 备选：把三元编译出的 `brtrue`（Accessory 跳 0 分支）改成 `nop`，让 Accessory 也走 WeightedRandomSelect 分支（`ldc.i4.0` 成死代码无害）。
+
+**② 可镶判定**（`Item.GetSocketableGems`，public）
+
+**修改前**（只放行武器/护甲）：
+```csharp
+if (resourceCategory.IsWeapon() || resourceCategory.IsArmor())
+```
+
+**修改后**（放行饰品）：
+```csharp
+if (resourceCategory.IsWeapon() || resourceCategory.IsArmor() || resourceCategory == ResourceCategory.Accessory)
+```
+
+**dnSpy**：本方法含 lambda → **Edit Method (C#) 必炸**，只能 **Edit Method Body (IL)**：在 `IsArmor()` 的 `brtrue` 之后插入 4 条指令：
+```
+ldloc.0            // resourceCategory（第一个局部变量）
+ldc.i4.s 13        // ResourceCategory.Accessory 枚举值 = 13
+ceq
+brtrue <原 if 体标签>
+```
+
+**说明**：只影响**新生成**饰品，已有库存不追溯（插槽在生成时定死）。
+
+---
+
+# 五、风险与副作用清单（改前必读）
 
 ## 4.1 必远古 → 铁匠合成/合成任务卡死 ⚠️（当前最大坑）
 
@@ -337,5 +383,7 @@ public void Init(int level, int maxLevel)
 | 居民 | 必远古 | `GenerationDistribution.GetGrade` | 本次 v3 补标 |
 | 技能 | 等级上限 | `SkillLogicBase.GetMaxLevel` | e746690→421d38f |
 | 技能 | UI 封顶 | `LevelBarController.Init` + `ColorPicker.GetGradientColor` | 3bc6ca2→0327d89 |
+| 装备 | 饰品镶宝石（插槽生成） | `ItemExtensions.SocketGenerations` | 本次 v4 补标 |
+| 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
-| 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排） |
+| 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
