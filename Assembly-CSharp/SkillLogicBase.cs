@@ -44,6 +44,13 @@ public abstract class SkillLogicBase
 	}
 
 	// Token: 0x0600387A RID: 14458 RVA: 0x00129485 File Offset: 0x00127885
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 学院技能等级上限（全技能统一入口，无子类 override，改这一处全生效）。
+	// 主技能 9 / 主动 3 / 副技能 9 = 可升级次数；初始等级 1，面板显示 1~10（主动 1~4）。
+	// dnSpy: Edit Method 本方法，return 值改成目标上限即可（如 99）。
+	// 上游：School.UpgradeSkill → HasMoreLevelToUpgrade → GetMaxLevel；
+	// UI：PageSkillController 的 LevelBar.Init(等级, 上限)。
+	// =============================================================
 	public int GetMaxLevel()
 	{
 		if (this.SkillCommandType == SkillCommandType.Main)
