@@ -31,6 +31,7 @@ public class DivineHeartResidentEffect : IResidentEffect
 	}
 
 	// Token: 0x06002670 RID: 9840 RVA: 0x00113288 File Offset: 0x00111688
+	// MOD 2026-09-29: 居民 buff 单兵值查表基准（难度分段 0.06→0.6 × 品质系数）。dnSpy: Edit Method 本方法, 把各档 num 值整体放大 k 倍。
 	public static IResidentEffect CreateDifficultyRelatedEffect(DifficultyLevelMeasurement measurement, double qualityCoeff)
 	{
 		double num = 0.06;

@@ -54,6 +54,14 @@ public static class ResidentsExtensions
 	}
 
 	// Token: 0x06002311 RID: 8977 RVA: 0x00100C94 File Offset: 0x000FF094
+	// ==================== MOD 标记 2026-09-29 ====================
+	// ★ 居民 buff 强度的【主改点】——品质系数随机区间（这就是老板说的"随机数"）。
+	//   品质档位（GetGrade/postsetQuality）定好后，这里按档位 Roll 一个系数 num（0~1.0），
+	//   传入 CreateResidentByCoeff 后作为 growthCoeffecient = num + 1.0，乘进 CurrentRate。
+	//   dnSpy 改：Edit Method 本方法，把 Random.Range 区间整体放大即可。
+	//   例：全员十倍 → Normal (0f,2f) / Rare (2f,4f) / Epic (4f,6f) / Legendary (6f,8f) / Ancient (8f,10f)
+	//   ⚠️ 只对【新招募】居民生效，旧居民 CurrentRate 已定死存档。
+	// =============================================================
 	public static Resident CreateResidentByQuality(this ResidentType type, DifficultyLevelMeasurement difficultyLevelMeasurement, QualityGrade? presetQuality = null)
 	{
 		if (presetQuality == null)

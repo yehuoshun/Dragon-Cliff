@@ -31,6 +31,7 @@ public class PracticeResidentEffect : IResidentEffect
 	}
 
 	// Token: 0x0600267F RID: 9855 RVA: 0x001135C4 File Offset: 0x001119C4
+	// MOD 2026-09-29: 居民 buff 单兵值查表基准（难度分段 0.1→1.5 × 品质系数）。dnSpy: Edit Method 本方法, 把各档 num 值整体放大 k 倍。
 	public static IResidentEffect CreateDifficultyRelatedEffect(DifficultyLevelMeasurement measurement, double qualityCoeff)
 	{
 		double num = 0.1;
