@@ -65,6 +65,42 @@ private static int GetGemLevel(double difficultyValue, int starRating)
 
 ---
 
+## 1.2 商店饰品必定星辰
+
+> ✅ **已改验证成功（2026-09-30）**：商店刷新饰品带星辰特效。
+
+**目的**：原版商店饰品永远不星辰（生成时 `forceStar=false` 被资格闸拦截），改后 Ancient 品质饰品必定星辰。
+
+**位置**：`DifficultyLevelMeasurement` 类 → 两个方法：`GetStarChance`（概率闸）+ `GetQualityConfig`（资格闸）。**两处都改，缺一不可**（实战踩坑：只改概率闸，饰品仍不星辰）。
+
+**① 概率闸 `GetStarChance`**（public，原版按来源分档：商店/掉落 1%、合成 1.5%、卷轴 30%、1 星 0.05%、其他 0.1%）
+
+**修改后**（Edit Method (C#) 整体替换，无 lambda）：
+```csharp
+public double GetStarChance(ResourceSourceType itemSource)
+{
+    return 1.0;
+}
+```
+
+**② 资格闸 `GetQualityConfig`**（private，flag 决定谁能参与星辰判定）
+
+**修改前**（饰品需要 tier>35 且 forceStar，商店饰品 forceStar=false → 恒无资格）：
+```csharp
+bool flag = ((resourceCategory.IsWeapon() || resourceCategory.IsArmor()) && correspondingItemTierLevel > 35) || (resourceCategory == ResourceCategory.Accessory && correspondingItemTierLevel > 35 && forceStar) || (resourceCategory == ResourceCategory.Scrolls && correspondingItemTierLevel > 35);
+```
+
+**修改后**（饰品无条件有资格，只改中间一段）：
+```csharp
+bool flag = ((resourceCategory.IsWeapon() || resourceCategory.IsArmor()) && correspondingItemTierLevel > 35) || resourceCategory == ResourceCategory.Accessory || (resourceCategory == ResourceCategory.Scrolls && correspondingItemTierLevel > 35);
+```
+
+**生效链路**：商店饰品 → Ancient（§2.3 梯度 90%）→ flag=true → `Random.value <= 1.0` 恒真 → `CreateStar()` → 挂星辰特效。
+
+**边界**：配合 90% 远古梯度，约 90% 饰品星辰；10% 非远古不星辰。顺带：商店/掉落的 Ancient 武器/护甲/卷轴（tier>35）也必定星辰。
+
+---
+
 # 二、居民类
 
 ## 2.1 居民槽位上限 30 → 127

@@ -373,6 +373,13 @@ public class DifficultyLevelMeasurement
 	}
 
 	// Token: 0x06001ECB RID: 7883 RVA: 0x000D65D4 File Offset: 0x000D49D4
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【商店饰品星辰·已改验证】星辰概率闸：原版商店/掉落 1%、合成 1.5%、卷轴 30%、
+	//   1星 0.05%、其他 0.1%。已改为恒 1.0（Ancient 时必定星辰）。
+	// dnSpy: Edit Method (C#) 整体替换（本方法无 lambda）。
+	// ⚠️ 只改这里不够：星辰资格闸在 GetQualityConfig 的 flag（饰品需 forceStar），
+	//   商店饰品 forceStar=false 会被拦——两处都改才生效，见下方标注。
+	// =============================================================
 	public double GetStarChance(ResourceSourceType itemSource)
 	{
 		if (itemSource == ResourceSourceType.Combine)
@@ -817,6 +824,14 @@ public class DifficultyLevelMeasurement
 	}
 
 	// Token: 0x06001ED7 RID: 7895 RVA: 0x000D71D0 File Offset: 0x000D55D0
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【商店饰品星辰·已改验证】星辰资格闸（flag）：原版饰品需 tier>35 且 forceStar，
+	//   商店生成饰品 forceStar=false → 永远无星辰资格。已改为饰品无条件有资格：
+	//   (Accessory && tier>35 && forceStar) → Accessory（去掉 tier 与 forceStar）。
+	// dnSpy: Edit Method (C#) 整体替换（本方法无 lambda）。
+	// ⚠️ 配套：GetStarChance 改为 1.0（上方标注）——flag 只是资格，概率归它管。
+	// 效果：Ancient 品质饰品必定星辰（配合 §2.3 梯度 90% 远古 → 约 90% 饰品星辰）。
+	// =============================================================
 	private ItemGenerationQuality GetQualityConfig(QualityGrade? determined, ResourceSourceType sourceType, ResourceType itemType, bool forceStar = false)
 	{
 		ResourceCategory resourceCategory = itemType.GetResourceCategory();
