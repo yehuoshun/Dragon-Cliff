@@ -525,6 +525,15 @@ public class Item : NullableObject
 	}
 
 	// Token: 0x06002C4A RID: 11338 RVA: 0x001226B8 File Offset: 0x00120AB8
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【龙目之晶一次多孔·已改验证】原版用 1 个晶开 1 孔，已改为 for 循环 50 次：
+	//   1 个晶一次开 50 孔（不查上限，无脑加）。
+	// dnSpy：右键 Edit Method (C#) 直接改成功（方法体替换为 for 循环版）；
+	//   若报 WoodenSwordTemplate.Item 类型引用错误，把 new List<Item> 改 new List<global::Item>。
+	// 注意：方法 C# 反编译视图（非编辑态）会报 StackAnalysis 异常，不影响 Edit Method。
+	// 原版上限 CanAddMoreManualSockets（武器<4/护甲<3）已被本次修改绕过。
+	// 道具消耗不变（BatchResourceUpdate 仍扣 1 个）。UI 显示 50 孔已验证正常。
+	// =============================================================
 	public bool ExpandItemSockets(Item socketBatcher)
 	{
 		if (!this.CanAddMoreManualSockets())

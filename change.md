@@ -457,6 +457,58 @@ NumberOfDispels = UnityEngine.Random.Range(1, 4)   // 1~3 随机（含 3）
 - 被闪避 ✗、反射伤害 ✗、持续伤害 dot ✗
 - 驱散数量 = NumberOfDispels
 
+## 4.3 龙目之晶：一次开 50 孔
+
+> ✅ **已改验证成功（2026-09-30）**：1 个龙目之晶一次开 50 孔，UI 显示正常。
+
+**目的**：原版 1 个晶开 1 孔（上限：武器总孔 <4、护甲 <3），改为一次 50 孔。
+
+**位置**：`Item` 类 → `ExpandItemSockets(Item socketBatcher)`
+
+**修改后**（Edit Method (C#) 直接替换方法体）：
+```csharp
+public bool ExpandItemSockets(Item socketBatcher)
+{
+    if (!this.CanAddMoreManualSockets())
+    {
+        return false;
+    }
+    if (socketBatcher.Type.IsSocketBatcher())
+    {
+        for (int i = 0; i < 50; i++)          // 一次 50 孔（不查上限，无脑加）
+        {
+            this.Sockets.Add(new ItemSocket
+            {
+                SocketType = socketBatcher.Type.GetSocketBatcherRelatedSocketType(),
+                Gem = new NullObject(),
+                SourceType = SocketSourceType.Added
+            });
+        }
+        GameWorld.instance.PlayerProfile.BatchResourceUpdate(new List<ResourceUpdate>
+        {
+            new ResourceUpdate
+            {
+                ResourceType = socketBatcher.Type,
+                ChangeAmount = -1.0,          // 道具仍只扣 1 个
+                RelatedItems = new List<Item>
+                {
+                    socketBatcher
+                }
+            }
+        });
+        return true;
+    }
+    return false;
+}
+```
+
+**dnSpy 要点**：
+- 右键 **Edit Method (C#) 直接改成功**；方法 C# 反编译视图（非编辑态）报 StackAnalysis 异常不影响编辑
+- 若报 `WoodenSwordTemplate.Item` 类型引用错误 → `new List<Item>` 改 `new List<global::Item>`（本次实测未触发）
+- 想改孔数就改 `i < 50` 的数值
+
+**注意**：本次修改绕过原版上限（`CanAddMoreManualSockets` 武器 <4 / 护甲 <3），装备可超上限加孔；配合 §4.1 饰品镶宝石 + 打孔，饰品也能直接 50 孔。
+
 ---
 
 # 五、风险与副作用清单（改前必读）
