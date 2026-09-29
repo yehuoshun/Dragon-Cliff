@@ -49,6 +49,12 @@ public class GenerationDistribution
 	}
 
 	// Token: 0x060029C1 RID: 10689 RVA: 0x0011C580 File Offset: 0x0011A980
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 【必远古】品质入口一刀切：全部物品/居民直接判为 Ancient。
+	// dnSpy: Edit Method 本方法，方法体整体替换为 return QualityGrade.Ancient;
+	// ⚠️ 副作用：铁匠合成/合成任务会卡死（BuildingExtensions.IsCombineable 要求
+	//   三件至少一件非远古，全远古断供）——详见仓库根目录 change.md §4.1。
+	// =============================================================
 	public QualityGrade GetGrade()
 	{
 		float num = UnityEngine.Random.Range(0f, 1f);

@@ -2736,6 +2736,10 @@ public class PlayerProfile
 	public static readonly int RecruitmentRefreshDays = 20;
 
 	// Token: 0x04001F25 RID: 7973
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 居民槽位上限 30 → 127（dnSpy 改 .cctor 里的赋值或 Edit Field 改初值）。
+	// 说明：NumberOfResidentSlots 是 int 无溢出；实际瓶颈是城镇寻路性能。
+	// =============================================================
 	public static readonly int MaxResidentSlot = 30;
 
 	// Token: 0x04001F26 RID: 7974
