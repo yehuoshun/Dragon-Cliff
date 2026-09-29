@@ -153,6 +153,15 @@ public static class BuildingExtensions
 	}
 
 	// Token: 0x060021EB RID: 8683 RVA: 0x000F16DC File Offset: 0x000EFADC
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 【必远古必读】卡合成任务的根源在这行：
+	//   (items.Any(i => i.ItemGrade != Ancient)) —— 三件合成要求至少一件非远古。
+	// GetGrade 改成必远古后所有装备全远古 → 永远凑不出非远古 → 铁匠合成不可选
+	//   → ItemCombined 事件不触发 → 合成类任务（ItemCombineRequirementLogic）卡死。
+	// 解法（保留必远古）：编辑本方法把这行条件删掉，三件远古即可合成；
+	//   产出 = 最低品质+1（远古+1=远古），3件远古换1件远古，金币照扣，但任务可过。
+	//   注意仍受 (num==5 && 锻造炉>=2级) 与三件同类型同等级约束。
+	// =============================================================
 	public static bool IsCombineable(this List<Item> items)
 	{
 		if (items.Count == 3)
