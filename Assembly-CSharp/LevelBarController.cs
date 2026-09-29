@@ -11,6 +11,15 @@ public class LevelBarController : MonoBehaviour
 	}
 
 	// Token: 0x06000F75 RID: 3957 RVA: 0x00094988 File Offset: 0x00092D88
+	// ==================== MOD 标记 2026-09-29 ====================
+	// 配合 GetMaxLevel 改大上限时不爆 UI：格子数封顶 10。
+	// dnSpy Edit Method 本方法，把 for 的循环变量改为封顶值：
+	//   int displayMax = Math.Min(maxLevel, 10);
+	//   for (int i = 0; i < displayMax; i++)
+	// 说明：level 超过 10 后格子全亮（i+1 <= level 恒真），视觉效果=已满；
+	//   GetGradientColor(i, maxLevel) 保留原 maxLevel，颜色渐变按真实上限走。
+	// 影响面：全游戏只有 PageSkillController（学院技能页）调用本组件，不牵连其他 UI。
+	// =============================================================
 	public void Init(int level, int maxLevel)
 	{
 		this.ResetBar();
