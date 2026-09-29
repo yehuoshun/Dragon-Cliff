@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-09-29 实战汇总
+> 版本：2026-09-29 实战汇总（v2：合成相关已移除）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -12,7 +12,7 @@
 | 要点 | 说明 |
 |---|---|
 | **备份** | 改任何东西前复制一份 `game_Data/Managed/Assembly-CSharp.dll` |
-| **Edit Method vs Edit Class** | 含 LINQ/lambda 的方法（如 `CalculateCombineResult`、`IsCombineable`）**Edit Method (C#) 必失败**（报 Invalid token `'<'`），只能右键 **Edit Method Body** 改 IL |
+| **Edit Method vs Edit Class** | 含 LINQ/lambda 的方法（如 `SchoolMenuController.UpdatePages`、`GetListByFurnaceTab`）**Edit Method (C#) 必失败**（报 Invalid token `'<'` / CS0121 歧义），只能右键 **Edit Method Body** 改 IL |
 | **纯常量方法**（如 GetMaxLevel、GetGrade） | 可直接 Edit Method (C#) |
 | **改 IL 常量** | `ldc.i4.5` 这种直接点数值改；用上方 C# 注释行定位，别改错位置 |
 | **保存** | File → Save Module，重进游戏生效 |
@@ -202,123 +202,7 @@ if (value == QualityGrade.Ancient)
 
 **说明**：单兵 buff = 难度查表基准 × (系数+1)，生产最高 +303%、售价/修炼/掉宝 +151.5%、神心 +60.6%。只对新招募居民生效。保品质梯度版：区间不动，改 `CreateResidentByCoeff` 里 `determinedQualityCoef + 1.0` → `determinedQualityCoef * 10.0 + 1.0`。
 
----
-
-## 5. 【必远古副作用】合成修复
-
-**症状**：必远古后铁匠合成做不了 → 合成任务（ItemCombined 事件）卡死。
-
-**根因**：`IsCombineable` 要求三件至少一件非远古；且全远古时最低品质=Ancient(5) → `num=(int)(5+1)=6`，原判定 `num<5 || num==5` 两层全卡。
-
-### 5.1 `BuildingExtensions.IsCombineable`（含 LINQ，走 IL）
-
-**修改前**（关键条件行）：
-```csharp
-if (items.Any((Item i) => i.ItemGrade != QualityGrade.Ancient)   // ← 必删
-    && items.All((Item i) => i.Level == level)
-    && (num < 5 || (num == 5 && BuildingExtensions.GetForgeLevel() >= 2))
-    && (category.IsWeapon() || category.IsArmor() || category == ResourceCategory.Consumable
-        || (category == ResourceCategory.Gem && level < ItemExtensions.MaxGemLevel)))
-```
-
-**修改后**：
-```csharp
-if (items.All((Item i) => i.Level == level)
-    && (num <= 5 || (num == 6 && BuildingExtensions.GetForgeLevel() >= 2))
-    && (category.IsWeapon() || category.IsArmor() || category == ResourceCategory.Consumable
-        || (category == ResourceCategory.Gem && level < ItemExtensions.MaxGemLevel)))
-```
-
-**IL 等价改法**：删除 Any 条件的整段 lambda 调用+分支；`num < 5`/`num == 5` 两处 `ldc.i4.5` 常量改 `ldc.i4.6`（分支指令不动）。
-
-### 5.2 `BuildingExtensions.CalculateCombineResult`（大量 LINQ，必须走 IL）
-
-**修改前**：
-```csharp
-int num2 = (int)(qualityGrade + 1);
-if (num2 < 5 || (num2 == 5 && BuildingExtensions.GetForgeLevel() >= 2))
-```
-
-**修改后**（等价）：
-```csharp
-int num2 = (int)(qualityGrade + 1);
-if (num2 < 6 || (num2 == 6 && BuildingExtensions.GetForgeLevel() >= 2))
-```
-
-**IL 操作**（Edit Method Body，找到 `num2` 判定段）：
-```cil
-ldloc.s  V_9
-ldc.i4.5        ; ← 改 6
-blt      进if体
-ldloc.s  V_9
-ldc.i4.5        ; ← 改 6
-bne.un    跳过
-call GetForgeLevel()
-ldc.i4.2
-blt      跳过
-```
-改后反编译应显示：`if (num2 < 6 || (num2 == 6 && GetForgeLevel() >= 2))`
-
-### 5.3 产出品质（防枚举越界）
-
-**修改前**（原行）：
-```csharp
-type2.ItemGenerate(ResourceSourceType.Combine,
-    productionDifficultyLevelMeasurement2.GetItemGenerationQuality((QualityGrade)num2, type2, ResourceSourceType.Combine),
-    itemTierLevel, 1)
-```
-
-**修改后 v1（固定远古，已验证可解任务）**：IL 里把传给 `GetItemGenerationQuality` 的品质参数 `ldloc.s V_9` 换成 `ldc.i4.5`，反编译显示：
-```csharp
-GetItemGenerationQuality(QualityGrade.Ancient, type2, ResourceSourceType.Combine)
-```
-
-**修改后 v2（远古合成星辰，推荐终端形态，待验证）**：产出段加分支——全远古（num2==6）产星辰，低品质维持原金字塔：
-```csharp
-ItemGenerationQuality quality = (num2 == 6)
-    ? ItemGenerationQuality.CreateStar()
-    : productionDifficultyLevelMeasurement2.GetItemGenerationQuality((QualityGrade)(num2 > 5 ? 5 : num2), type2, ResourceSourceType.Combine);
-type2.ItemGenerate(ResourceSourceType.Combine, quality, itemTierLevel, 1);
-```
-
-**v2 IL 级操作（从 v1 状态出发，Edit Method Body）**：
-
-修改前 IL（v1，已固定远古）：
-```cil
-188  026D  ldloc.s   V_13     ; this = measurement2
-189  026F  ldc.i4.5           ; 品质固定 5（v1）
-190  0271  ldloc.s   V_10     ; type2
-191  0273  ldc.i4.4           ; Combine
-192  0274  callvirt  GetItemGenerationQuality(QualityGrade, ResourceType, ResourceSourceType)
-193  0279  ldloc.s   V_12     ; itemTierLevel
-194  027B  ldc.i4.1
-195  027C  call      ItemGenerate(ResourceType, ResourceSourceType, ItemGenerationQuality, int32, int32)
-```
-
-修改后 IL（v2 分支）：
-```cil
-      ldloc.s     V_9          ; num2
-      ldc.i4.6
-      bne.un      →原逻辑      ; num2 != 6 → 走原品质+1 路径
-      call        ItemGenerationQuality::CreateStar()   ; num2==6 → 星辰
-      br          →合并点
-原逻辑:
-188  026D  ldloc.s   V_13     ; this（不动）
-189  026F  ldloc.s   V_9      ; ★改回：品质 = num2（原版 (QualityGrade)num2）
-190  0271  ldloc.s   V_10     ; type2（不动）
-191  0273  ldc.i4.4           ; Combine（不动）
-192  0274  callvirt  GetItemGenerationQuality（不动）
-合并点:
-193  0279  ldloc.s   V_12     ; itemTierLevel（不动）
-194  027B  ldc.i4.1           ; （不动）
-195  027C  call      ItemGenerate（不动）
-```
-
-dnSpy 具体操作：① 选中 188 行右键插入 5 条指令（ldloc.s V_9 / ldc.i4.6 / bne.un→188 / call CreateStar / br→193）；② 把 189 的 ldc.i4.5 改回 ldloc.s V_9；③ 其余不动保存。跳转目标用操作数下拉选对应指令行，插入后行号自动重排，按逻辑位置选。
-
-**说明**：`CreateStar()` = 远古+星标（星辰），卷轴制作已在用；星辰可继续当合成原料（按远古品质计 num=6），形成星辰→星辰消耗循环，每轮亏 2 件。v1 为解任务保底，v2 为消耗口升级。
-
----
+> ⚠️ **必远古的代价（重要）**：品质入口一刀切后，**铁匠合成/合成任务会卡死**（原版 `IsCombineable` 要求三件至少一件非远古，全远古断供）。若不需要合成可接受；需要合成则别开必远古（或自行改 `BuildingExtensions.IsCombineable` 放行远古，改前备份）。
 
 ## 6. 学院技能等级上限
 
@@ -414,7 +298,6 @@ public void Init(int level, int maxLevel)
 | 居民上限 | `PlayerProfile.MaxResidentSlot` 附近 | a90e179 |
 | buff 上限族 | `PlayerProfile` 静态构造 | a90e179 |
 | 系数区间/查表 | `ResidentsExtensions.CreateResidentByQuality` + 6 个 effect 类 | 30c7308 |
-| 合成修复 | `BuildingExtensions.IsCombineable/CalculateCombineResult` | 92a79be→ea7c976 |
 | 技能上限 | `SkillLogicBase.GetMaxLevel` | e746690→421d38f |
 | UI 封顶 | `LevelBarController.Init` + `ColorPicker.GetGradientColor` | 3bc6ca2→0327d89 |
 | 修改教程 | `change.md`（本文件） | 54471ad |
