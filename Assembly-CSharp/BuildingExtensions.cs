@@ -154,13 +154,13 @@ public static class BuildingExtensions
 
 	// Token: 0x060021EB RID: 8683 RVA: 0x000F16DC File Offset: 0x000EFADC
 	// ==================== MOD 标记 2026-09-29 ====================
-	// 【必远古必读】卡合成任务的根源在这行：
-	//   (items.Any(i => i.ItemGrade != Ancient)) —— 三件合成要求至少一件非远古。
-	// GetGrade 改成必远古后所有装备全远古 → 永远凑不出非远古 → 铁匠合成不可选
-	//   → ItemCombined 事件不触发 → 合成类任务（ItemCombineRequirementLogic）卡死。
-	// 解法（保留必远古）：编辑本方法把这行条件删掉，三件远古即可合成；
-	//   产出 = 最低品质+1（远古+1=远古），3件远古换1件远古，金币照扣，但任务可过。
-	//   注意仍受 (num==5 && 锻造炉>=2级) 与三件同类型同等级约束。
+	// 【必远古必读】卡合成任务的根源在这行。完整解法共 3 处（只删一个条件不够）：
+	//  1) 本方法：删掉 (items.Any(i => i.ItemGrade != Ancient))，
+	//     并把 (num < 5 || (num == 5 && 锻造炉>=2)) 改为 (num <= 5 || (num == 6 && 锻造炉>=2))
+	//     ——全远古时最低品质=Ancient(5)，num=(int)(5+1)=6，原判定 6<5/6==5 全假，两层闸一起卡。
+	//  2) CalculateCombineResult 里 num2 的同一判定同样放宽（num2 也是最低品质+1）。
+	//  3) 产出品质 (QualityGrade)num2 会 cast 出枚举外值 6，改成 (QualityGrade)(num2 > 5 ? 5 : num2)。
+	// 效果：三件远古可合成，3换1远古、金币照扣，合成任务（ItemCombined 事件）恢复。
 	// =============================================================
 	public static bool IsCombineable(this List<Item> items)
 	{
