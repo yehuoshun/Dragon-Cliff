@@ -47,7 +47,12 @@ public abstract class SkillLogicBase
 	// ==================== MOD 标记 2026-09-29 ====================
 	// 学院技能等级上限（全技能统一入口，无子类 override，改这一处全生效）。
 	// 主技能 9 / 主动 3 / 副技能 9 = 可升级次数；初始等级 1，面板显示 1~10（主动 1~4）。
-	// dnSpy: Edit Method 本方法，return 值改成目标上限即可（如 99）。
+	// dnSpy: Edit Method 本方法，return 值改成目标上限即可（如 19）。
+	// ⚠️ 风险提醒：
+	//  1) UI：LevelBarController.Init 按 maxLevel 实例化格子，改 99 → 99 格塞爆面板+卡顿，建议 ≤30
+	//  2) 主动技能3级+成本返回空列表→升级白嫖（MetRequirements 对空集合为 true）
+	//  3) 技能效果多为档位制 if(Level==1/2) else 兜底，超档后效果不再涨（线性公式的如奥术才继续涨）
+	//  4) 存档/成本公式/战斗无越界风险，可放心
 	// 上游：School.UpgradeSkill → HasMoreLevelToUpgrade → GetMaxLevel；
 	// UI：PageSkillController 的 LevelBar.Init(等级, 上限)。
 	// =============================================================
