@@ -31,6 +31,13 @@ public class FameFiveTemplate : AccessoryTemplateBase
 	}
 
 	// Token: 0x0600276A RID: 10090 RVA: 0x001189E8 File Offset: 0x00116DE8
+	// ==================== MOD 标记 2026-09-30 ====================
+	// 【荣光(Fame)饰品星辰特效·已改待测试】命中 100% 驱散敌方增益。
+	// 原版 Random.Range(1,3) 是 int 上界排他 → 实际驱散 1~2 个。
+	// 已改为固定数量（见方法体），Edit Method (C#) 可直接改（无 lambda）。
+	// 触发条件（DispelOnHitProcess）：命中(!IsMissed) + 直接伤害(IsDirectDamage)；
+	//   被闪避/反射/dot 不触发。详见 change.md §4.2。
+	// =============================================================
 	public override List<ISpecialEffectDataLoad> GenerateStarEffects(QualityGrade grade, int itemTierNumber)
 	{
 		return new List<ISpecialEffectDataLoad>

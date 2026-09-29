@@ -400,6 +400,41 @@ brtrue <原 if 体标签>
 
 **说明**：只影响**新生成**饰品，已有库存不追溯（插槽在生成时定死）。
 
+## 4.2 荣光饰品：星辰特效命中驱散（待测试）
+
+> ⚠️ **待测试（2026-09-30）**：老板已改 NumberOfDispels，游戏内未验证。
+
+**背景**：荣光（Fame）系列饰品 1~7 号（tier 4/9/14/19/37/45/53，力智饰品），**5/6/7 号**的星辰特效 = **命中 100% 驱散敌方增益**。配合 §1.2 商店饰品必定星辰，刷到荣光 5/6/7 即驱散神器。
+
+**位置**：`FameFiveTemplate` / `FameSixTemplate` / `FameSevenTemplate` 类 → `GenerateStarEffects(QualityGrade grade, int itemTierNumber)`（三处代码相同）
+
+**原版**（`Random.Range(1, 3)` int 重载上界排他 → **实际驱散 1~2 个**）：
+```csharp
+public override List<ISpecialEffectDataLoad> GenerateStarEffects(QualityGrade grade, int itemTierNumber)
+{
+    return new List<ISpecialEffectDataLoad>
+    {
+        new DispelOnHitData
+        {
+            Chance = 1.0,
+            IsStar = true,
+            NumberOfDispels = UnityEngine.Random.Range(1, 3)
+        }
+    };
+}
+```
+
+**改法**（Edit Method (C#)，无 lambda 可直接改）：
+```csharp
+NumberOfDispels = 3        // 固定 3 个（原版实际 1~2，Range 上界排他）
+NumberOfDispels = UnityEngine.Random.Range(1, 4)   // 1~3 随机（含 3）
+```
+
+**触发条件**（`DispelOnHitProcess`）：`!IsMissed && IsDirectDamage` —— **命中 + 直接伤害**才触发：
+- 命中本体伤害 ✓（千刃每刀、技能主伤害）
+- 被闪避 ✗、反射伤害 ✗、持续伤害 dot ✗
+- 驱散数量 = NumberOfDispels
+
 ---
 
 # 五、风险与副作用清单（改前必读）
