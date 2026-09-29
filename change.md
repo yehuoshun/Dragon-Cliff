@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-09-30（v4，新增装备类：饰品镶宝石；v2 已移除合成修复章节）
+> 版本：2026-09-30（v5，§4.1 实测改法定稿：两处已改验证成功；v2 已移除合成修复章节）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -299,6 +299,8 @@ public void Init(int level, int maxLevel)
 
 ## 4.1 饰品镶宝石（原版 0 插槽）
 
+> ✅ **已改验证成功（2026-09-30）**：两处修改均已实施，新生成饰品可镶宝石。
+
 **目的**：饰品（Accessory）也能镶嵌宝石。原版饰品强制 0 插槽，品质再高也白搭。
 
 **要改 2 处，缺一不可**：
@@ -312,10 +314,12 @@ int num = (type.GetResourceCategory() == ResourceCategory.Accessory) ? 0 : dicti
 
 **修改后**（饰品走品质插槽表：普通 0 / 稀有 20%1 / 史诗 50%1 / 传奇 80%1·20%2 / 远古 2）：
 ```csharp
-int num = dictionary[grade].WeightedRandomSelect<GemSocketNumberPresentable>().NumberOfSockets;
+int num = (type.GetResourceCategory() == (ResourceCategory)127) ? 0 : dictionary[grade].WeightedRandomSelect<GemSocketNumberPresentable>().NumberOfSockets;
 ```
 
-**dnSpy**：本方法无 lambda → 优先 **Edit Method (C#)** 整体替换。IL 备选：把三元编译出的 `brtrue`（Accessory 跳 0 分支）改成 `nop`，让 Accessory 也走 WeightedRandomSelect 分支（`ldc.i4.0` 成死代码无害）。
+**dnSpy（实测改法）**：Edit Method Body (IL)，**只改一行**：`ldc.i4.s 13` → `ldc.i4.s 127`（beq 保留不动）。原理：条件 `== 13` 永假（枚举无 127），恒走 WeightedRandomSelect 分支，`ldc.i4.0` 成死代码无害。
+
+> ⚠️ 踩坑记录：**不要**把 `beq 00D7` 改成 `nop`——`beq` 弹出两个操作数而 `nop` 不弹，`ldc.i4.s 13` 残留在栈上导致后续调用栈不平衡，保存报错。改常量值（13→127）保持栈平衡才是正解。
 
 **② 可镶判定**（`Item.GetSocketableGems`，public）
 
@@ -329,7 +333,7 @@ if (resourceCategory.IsWeapon() || resourceCategory.IsArmor())
 if (resourceCategory.IsWeapon() || resourceCategory.IsArmor() || resourceCategory == ResourceCategory.Accessory)
 ```
 
-**dnSpy**：本方法含 lambda → **Edit Method (C#) 必炸**，只能 **Edit Method Body (IL)**：在 `IsArmor()` 的 `brtrue` 之后插入 4 条指令：
+**dnSpy（实测改法）**：本方法虽含 lambda/LINQ，但 **Edit Method (C#) 实测可直接改成功**（未踩 Invalid token `<` 坑）；若报错再转 Edit Method Body (IL)：在 `IsArmor()` 的 `brtrue` 之后插入 4 条指令：
 ```
 ldloc.0            // resourceCategory（第一个局部变量）
 ldc.i4.s 13        // ResourceCategory.Accessory 枚举值 = 13
