@@ -281,7 +281,42 @@ ItemGenerationQuality quality = (num2 == 6)
 type2.ItemGenerate(ResourceSourceType.Combine, quality, itemTierLevel, 1);
 ```
 
-**说明**：`CreateStar()` = 远古+星标（星辰），卷轴制作已在用；星辰可继续当合成原料。v1 为解任务保底，v2 为消耗口升级。
+**v2 IL 级操作（从 v1 状态出发，Edit Method Body）**：
+
+修改前 IL（v1，已固定远古）：
+```cil
+188  026D  ldloc.s   V_13     ; this = measurement2
+189  026F  ldc.i4.5           ; 品质固定 5（v1）
+190  0271  ldloc.s   V_10     ; type2
+191  0273  ldc.i4.4           ; Combine
+192  0274  callvirt  GetItemGenerationQuality(QualityGrade, ResourceType, ResourceSourceType)
+193  0279  ldloc.s   V_12     ; itemTierLevel
+194  027B  ldc.i4.1
+195  027C  call      ItemGenerate(ResourceType, ResourceSourceType, ItemGenerationQuality, int32, int32)
+```
+
+修改后 IL（v2 分支）：
+```cil
+      ldloc.s     V_9          ; num2
+      ldc.i4.6
+      bne.un      →原逻辑      ; num2 != 6 → 走原品质+1 路径
+      call        ItemGenerationQuality::CreateStar()   ; num2==6 → 星辰
+      br          →合并点
+原逻辑:
+188  026D  ldloc.s   V_13     ; this（不动）
+189  026F  ldloc.s   V_9      ; ★改回：品质 = num2（原版 (QualityGrade)num2）
+190  0271  ldloc.s   V_10     ; type2（不动）
+191  0273  ldc.i4.4           ; Combine（不动）
+192  0274  callvirt  GetItemGenerationQuality（不动）
+合并点:
+193  0279  ldloc.s   V_12     ; itemTierLevel（不动）
+194  027B  ldc.i4.1           ; （不动）
+195  027C  call      ItemGenerate（不动）
+```
+
+dnSpy 具体操作：① 选中 188 行右键插入 5 条指令（ldloc.s V_9 / ldc.i4.6 / bne.un→188 / call CreateStar / br→193）；② 把 189 的 ldc.i4.5 改回 ldloc.s V_9；③ 其余不动保存。跳转目标用操作数下拉选对应指令行，插入后行号自动重排，按逻辑位置选。
+
+**说明**：`CreateStar()` = 远古+星标（星辰），卷轴制作已在用；星辰可继续当合成原料（按远古品质计 num=6），形成星辰→星辰消耗循环，每轮亏 2 件。v1 为解任务保底，v2 为消耗口升级。
 
 ---
 
