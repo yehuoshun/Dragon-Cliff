@@ -12,13 +12,15 @@ public class LevelBarController : MonoBehaviour
 
 	// Token: 0x06000F75 RID: 3957 RVA: 0x00094988 File Offset: 0x00092D88
 	// ==================== MOD 标记 2026-09-29 ====================
-	// 配合 GetMaxLevel 改大上限时不爆 UI：格子数封顶 10。
-	// dnSpy Edit Method 本方法，把 for 的循环变量改为封顶值：
-	//   int displayMax = Math.Min(maxLevel, 10);
+	// 配合 GetMaxLevel 改大上限时不爆 UI：格子数封顶。
+	// ⚠️ 双 9 坑（必看）：ColorPicker.GetGradientColor 只认 listSize 3 和 9，
+	//   其他值直接 throw Exception（GetMaxLevel 改 99 后传 99 → 学院打开即崩）；
+	//   颜色表 Gradients 只有 9 色（索引 0~8），循环超 9 会数组越界。
+	// dnSpy Edit Method 本方法，改成：
+	//   int displayMax = Math.Min(maxLevel, 9);
 	//   for (int i = 0; i < displayMax; i++)
-	// 说明：level 超过 10 后格子全亮（i+1 <= level 恒真），视觉效果=已满；
-	//   GetGradientColor(i, maxLevel) 保留原 maxLevel，颜色渐变按真实上限走。
-	// 影响面：全游戏只有 PageSkillController（学院技能页）调用本组件，不牵连其他 UI。
+	//   ... component.Init(i + 1 <= level, ColorPicker.GetGradientColor(i, 9));
+	// 影响面：全游戏只有 PageSkillController（学院技能页）调用本组件。
 	// =============================================================
 	public void Init(int level, int maxLevel)
 	{

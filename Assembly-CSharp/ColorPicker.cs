@@ -16,6 +16,11 @@ public static class ColorPicker
 	}
 
 	// Token: 0x0600459A RID: 17818 RVA: 0x001C2080 File Offset: 0x001C0480
+	// ==================== MOD 标记 2026-09-29 ====================
+	// ⚠️ 坑：只认 listSize == 3/9，其他值直接 throw Exception。
+	// 改技能上限（SkillLogicBase.GetMaxLevel，如 99）时，若 LevelBar 仍传 maxLevel 进来
+	// 会在这里炸 → 学院打不开。改 LevelBarController.Init 时颜色参数固定传 9。
+	// =============================================================
 	public static Color GetGradientColor(int index, int listSize)
 	{
 		if (listSize == 3)
