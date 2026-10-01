@@ -6,6 +6,15 @@ using UnityEngine;
 public static class ItemHoverTooltip
 {
 	// Token: 0x06001849 RID: 6217 RVA: 0x000B99E4 File Offset: 0x000B7DE4
+	// ==================== MOD 标记 2026-10-01 ====================
+	// 龙晶 50 孔后此方法同样会把全部孔位图标塞进 list/list2（tooltip 溢出）。
+	// ⚠️ 全仓库无调用者（grep GetTooltipByItem 只有定义，两个程序集都查过）
+	//   = 死代码；静态类也无法被 Unity 事件/SendMessage 调用 → 不用改。
+	// 若老板要保险起见同步封顶（本方法无 LINQ，可 Edit Method (C#) 直改）：
+	//   两段 foreach 都换成
+	//   for (int i = 0; i < Math.Min(sockets.Count, 4); i++)
+	//   { ItemSocket itemSocket = sockets[i]; ... }
+	// =============================================================
 	public static TooltipItem GetTooltipByItem(Item ItemToPresentTooltip, Transform toDisplayOn)
 	{
 		Color gradeColor = FilePath.GetGradeColor(ItemToPresentTooltip.ItemGrade);

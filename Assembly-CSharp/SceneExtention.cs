@@ -378,6 +378,17 @@ public static class SceneExtention
 	}
 
 	// Token: 0x060045DF RID: 17887 RVA: 0x001C35D0 File Offset: 0x001C19D0
+	// ==================== MOD 标记 2026-10-01 ====================
+	// 龙晶 50 孔（§4.3）后，此方法把全部孔位图标塞进 list/list2 → tooltip 溢出。
+	// ⚠️ 本方法含 LINQ（orderby/Any/FirstOrDefault）→ Edit Method (C#) 必炸
+	//   （Invalid token '<'，见 change.md 通用要点），只能 Edit Method Body (IL)。
+	// ✅ 建议：不用改这里！TooltipController.AssignValues 的 Icons 渲染循环
+	//   一处封顶 4 就够了（全游戏 tooltip 图标只在这一个循环实例化）。
+	// 若坚持改：两段 foreach 换成
+	//   for (int i = 0; i < Math.Min(sockets.Count, 4); i++)
+	//   { ItemSocket s = sockets[i]; ... }
+	//   （list/list2 两段都改），IL 工作量较大，不推荐。
+	// =============================================================
 	public static TooltipItem GetItemTooltip(this IItemControl itemControl, NormalItem normalItem)
 	{
 		Color titleColor = Color.white;

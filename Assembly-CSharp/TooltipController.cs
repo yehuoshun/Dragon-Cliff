@@ -113,6 +113,20 @@ public class TooltipController : MonoBehaviour, ITooltip
 	}
 
 	// Token: 0x06001359 RID: 4953 RVA: 0x000A27A0 File Offset: 0x000A0BA0
+	// ==================== MOD 标记 2026-10-01 ====================
+	// 龙晶 50 孔（§4.3 ExpandItemSockets 改 50）后，悬停 tooltip 会把全部
+	// 孔位图标 Instantiate 出来 → 50 个图标溢出面板。
+	// 解法：图标循环封顶 4 个（像学院 LevelBarController 的 Math.Min 封顶思路）。
+	// dnSpy Edit Method (C#) 本方法（AssignValues，无 lambda/LINQ 可直接改）：
+	//   for (int i = 0; i < icons.Count; i++)
+	//   改成：
+	//   for (int i = 0; i < Math.Min(icons.Count, 4); i++)
+	// 影响面：TooltipItem.Icons 全游戏只有宝石孔图标两个来源
+	//   （SceneExtention.GetItemTooltip / ItemHoverTooltip.GetTooltipByItem），
+	//   这里一处封顶 = 所有悬停/装备/铁匠 tooltip 统一只显示 4 孔；
+	//   InnerIcons（孔内宝石图标）按 icons 索引取值，天然对齐不错位。
+	// 数据不受影响：Sockets 列表照旧 50 个，镶宝石/拆宝石/套装加成全走数据。
+	// =============================================================
 	private void AssignValues(TooltipItem item)
 	{
 		if (item.TitleColor.a != 0f)

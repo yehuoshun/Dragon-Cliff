@@ -547,6 +547,47 @@ double num = 0.2 + Convert.ToDouble((int)grade) * 0.03;
 
 ---
 
+## 4.5 龙晶孔位 UI 封顶：只显示 4 孔（防止溢出）
+
+> 📌 **标注完成（2026-10-01），未改 DLL**：dnSpy 改法已给出，老板改完即生效。
+
+**背景**：§4.3 一次开 50 孔后——① 悬停 tooltip 把全部 50 个孔位图标 Instantiate 出来 → 溢出面板；② 库存格子图标按 `Sockets.Count` 循环访问 `GemContainers[i]`（预制体只有 4 个容器）→ i ≥ 4 抛 ArgumentOutOfRange 异常刷日志。玩法数据（Sockets 50 个、镶/拆/套装加成）不受影响，只改显示层。
+
+**改法 ①（主，必改）：`TooltipController.cs` → `AssignValues`**（无 LINQ，Edit Method (C#) 直改）
+
+图标循环：
+```csharp
+for (int i = 0; i < icons.Count; i++)
+```
+改成：
+```csharp
+for (int i = 0; i < Math.Min(icons.Count, 4); i++)
+```
+
+一处封顶 = 全游戏所有 tooltip（背包/装备/铁匠/掉落）统一只显示前 4 孔。`InnerIcons`（孔内宝石图标）按 icons 索引取值，天然对齐不错位。
+
+**改法 ②（必改，防崩）：`InventoryItemController.cs` → `Init`**（无 LINQ，Edit Method (C#) 直改）
+
+```csharp
+int displayCount = Math.Min(normalItem.Item.Sockets.Count, 4);
+for (int i = 0; i < displayCount; i++)
+{
+    // ...原循环体不变（GemContainers[i].SetActive(true) 等）...
+}
+for (int j = displayCount; j < 4; j++)
+{
+    this.GemContainers[j].SetActive(false);
+}
+```
+
+**不用改**：
+- `SceneExtention.GetItemTooltip`：含 LINQ，Edit Method (C#) 必炸；Icons 渲染统一走 ① 的循环，这里无需动。
+- `ItemHoverTooltip.GetTooltipByItem`：全仓库无调用者（死代码），静态类无法被 Unity 事件/SendMessage 调用。
+
+**验证**：悬停 50 孔装备 tooltip 只显示 4 个孔图标、无溢出；背包格子图标正常无报错；拆宝石仍能一次拆完全部 50 孔。
+
+---
+
 # 五、风险与副作用清单（改前必读）
 
 ## 4.1 必远古 → 铁匠合成/合成任务卡死 ⚠️（当前最大坑）
@@ -591,5 +632,6 @@ double num = 0.2 + Convert.ToDouble((int)grade) * 0.03;
 | 技能 | UI 封顶 | `LevelBarController.Init` + `ColorPicker.GetGradientColor` | 3bc6ca2→0327d89 |
 | 装备 | 饰品镶宝石（插槽生成） | `ItemExtensions.SocketGenerations` | 本次 v4 补标 |
 | 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
+| 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01） |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
