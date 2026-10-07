@@ -651,6 +651,18 @@ public class Item : NullableObject
 	}
 
 	// Token: 0x06002C50 RID: 11344 RVA: 0x00122982 File Offset: 0x00120D82
+	// ==================== MOD 标记 2026-10-07 ====================
+	// 【饰品/护身符强化上限 100 级】玩家看到的"强化最高 100 级"就是这一行：
+	//   this.Level < 100 是等级上限唯一闸门（Amulet=护身符/套装件，ResourceCategory=25）。
+	// 改法（dnSpy Edit Method (C#)）：把 100 改成目标上限，如 200 / 999。
+	// 连带说明（改上限后自动适配，无需另改）：
+	//   1. 成功率 GetTeamSetUpgradeSuccessChance = (100-当前等级)/100，低于 50% 时强制 50% →
+	//      100 级以后恒 50%。想再调成功率去改该方法，与上限无关。
+	//   2. TeamSetUpgradeRequirements 费用固定（150万金币+50万熟练点+100恶魔碎片+100灌注粉末），不随等级涨。
+	//   3. TeamSetBase.Upgrade 属性按等级线性累加，特效每 10 级 1 个（level/10），无其它上限。
+	//   4. 面板"升到最大"按钮走 while(CanTeamSetUpgrade()) 循环，自动跟随新上限。
+	// 注意：只影响新升级，已 100 级的旧装备 CanTeamSetUpgrade=false 无法继续升（存档里 Level=100）。
+	// =============================================================
 	public bool CanTeamSetUpgrade()
 	{
 		return this.Type.GetResourceCategory() == ResourceCategory.Amulet && this.TeamSetUpgradeRequirements().MetRequirements() && this.Level < 100;

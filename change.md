@@ -637,6 +637,45 @@ public override void Init(PageElement item)
 
 ---
 
+## 4.6 饰品/护身符强化上限：默认最高 100 级 → 自定义
+
+> 📌 **已标注源码（2026-10-07），尚未改 DLL**：改法已核对，老板在 dnSpy 动手即可。
+
+**目的**：游戏内护身符（Amulet，套装件）强化面板显示最高 100 级，改到更高上限。
+
+**位置**：`Item` 类 → `CanTeamSetUpgrade()`（Item.cs）。
+
+**改法**（dnSpy Edit Method (C#)，无 LINQ 可直改）：
+
+```csharp
+// 修改前：
+public bool CanTeamSetUpgrade()
+{
+    return this.Type.GetResourceCategory() == ResourceCategory.Amulet
+        && this.TeamSetUpgradeRequirements().MetRequirements()
+        && this.Level < 100;   // ← 上限唯一闸门
+}
+
+// 修改后（100 → 200 示例）：
+        && this.Level < 200;
+```
+
+**改这一处的连带效果（自动适配，无需另改）**：
+
+| 系统 | 行为 | 备注 |
+|---|---|---|
+| 成功率 | `(100-当前等级)/100`，低于 50% 强制 50% | 100 级后恒 50%；想调成功率改 `GetTeamSetUpgradeSuccessChance`，与上限无关 |
+| 升级费用 | 固定：150万金币 + 50万熟练点 + 100 恶魔碎片 + 100 灌注粉末 | 不随等级涨 |
+| 属性成长 | 主属性按等级线性累加，附加属性每级 50% 概率加 | 无其它上限 |
+| 特效解锁 | 每 10 级 1 个（`level/10`） | 等级越高特效越多 |
+| 面板"升到最大" | `while(CanTeamSetUpgrade())` 循环 | 自动跟随新上限 |
+
+**边界**：
+- 只影响**新升级**；存档里已 100 级的旧装备 `Level=100`，`CanTeamSetUpgrade=false` 无法继续升。
+- 费用不随等级涨 → 高等级后性价比极高，建议配合成功率或费用一起改（可选）。
+
+---
+
 # 五、风险与副作用清单（改前必读）
 
 ## 4.1 必远古 → 铁匠合成/合成任务卡死 ⚠️（当前最大坑）
@@ -682,5 +721,6 @@ public override void Init(PageElement item)
 | 装备 | 饰品镶宝石（插槽生成） | `ItemExtensions.SocketGenerations` | 本次 v4 补标 |
 | 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
 | 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01），v13 已改已验证 |
+| 装备 | 饰品/护身符强化上限 100 级 | `Item.CanTeamSetUpgrade` | 本次 v14 标注（注释块 2026-10-07），待改 DLL |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
