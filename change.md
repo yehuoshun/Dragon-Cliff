@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-09-30（v5，§4.1 实测改法定稿：两处已改验证成功；v2 已移除合成修复章节）
+> 版本：2026-10-07（v13，§4.5 龙晶 50 孔 UI 封顶改法核对完毕：两处已改，游戏内测试通过暂无 bug）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -549,7 +549,7 @@ double num = 0.2 + Convert.ToDouble((int)grade) * 0.03;
 
 ## 4.5 龙晶孔位 UI 封顶：只显示 4 孔（防止溢出）
 
-> 📌 **标注完成（2026-10-01），未改 DLL**：dnSpy 改法已给出，老板改完即生效。
+> ✅ **已改已验证（2026-10-07）**：改法核对完毕——两处都无 LINQ，dnSpy 里 **Edit Method (C#)** 直接整段替换，**别用 IL**。已覆盖 DLL 进游戏实测：悬停 50 孔装备只显 4 孔、背包格子不报错，暂无 bug。
 
 **背景**：§4.3 一次开 50 孔后——① 悬停 tooltip 把全部 50 个孔位图标 Instantiate 出来 → 溢出面板；② 库存格子图标按 `Sockets.Count` 循环访问 `GemContainers[i]`（预制体只有 4 个容器）→ i ≥ 4 抛 ArgumentOutOfRange 异常刷日志。玩法数据（Sockets 50 个、镶/拆/套装加成）不受影响，只改显示层。
 
@@ -566,17 +566,64 @@ for (int i = 0; i < Math.Min(icons.Count, 4); i++)
 
 一处封顶 = 全游戏所有 tooltip（背包/装备/铁匠/掉落）统一只显示前 4 孔。`InnerIcons`（孔内宝石图标）按 icons 索引取值，天然对齐不错位。
 
-**改法 ②（必改，防崩）：`InventoryItemController.cs` → `Init`**（无 LINQ，Edit Method (C#) 直改）
+**改法 ②（必改，防崩）：`InventoryItemController.cs` → `Init`**（无 LINQ，dnSpy 里 **Edit Method (C#)** 整段方法体替换，别用 IL）
+
+改前（原文）：
 
 ```csharp
-int displayCount = Math.Min(normalItem.Item.Sockets.Count, 4);
-for (int i = 0; i < displayCount; i++)
+public override void Init(PageElement item)
 {
-    // ...原循环体不变（GemContainers[i].SetActive(true) 等）...
+    base.Init(item);
+    NormalItem normalItem = (NormalItem)item;
+    this.LockImage.SetActive(normalItem.Item.Locked);
+    for (int i = 0; i < normalItem.Item.Sockets.Count; i++)
+    {
+        this.GemContainers[i].SetActive(true);
+        Image componentInChildren = this.GemContainers[i].GetComponentInChildren<Image>();
+        if (normalItem.Item.Sockets[i].Gem is Item)
+        {
+            componentInChildren.sprite = FilePath.GetRecipeImage((normalItem.Item.Sockets[i].Gem as Item).Type);
+            componentInChildren.gameObject.SetActive(true);
+        }
+        else
+        {
+            componentInChildren.gameObject.SetActive(false);
+        }
+    }
+    for (int j = normalItem.Item.Sockets.Count; j < 4; j++)
+    {
+        this.GemContainers[j].SetActive(false);
+    }
 }
-for (int j = displayCount; j < 4; j++)
+```
+
+改后（整段替换，共 3 处变化：新增 `displayCount`，两个循环的上限换成它）：
+
+```csharp
+public override void Init(PageElement item)
 {
-    this.GemContainers[j].SetActive(false);
+    base.Init(item);
+    NormalItem normalItem = (NormalItem)item;
+    this.LockImage.SetActive(normalItem.Item.Locked);
+    int displayCount = Math.Min(normalItem.Item.Sockets.Count, 4);
+    for (int i = 0; i < displayCount; i++)
+    {
+        this.GemContainers[i].SetActive(true);
+        Image componentInChildren = this.GemContainers[i].GetComponentInChildren<Image>();
+        if (normalItem.Item.Sockets[i].Gem is Item)
+        {
+            componentInChildren.sprite = FilePath.GetRecipeImage((normalItem.Item.Sockets[i].Gem as Item).Type);
+            componentInChildren.gameObject.SetActive(true);
+        }
+        else
+        {
+            componentInChildren.gameObject.SetActive(false);
+        }
+    }
+    for (int j = displayCount; j < 4; j++)
+    {
+        this.GemContainers[j].SetActive(false);
+    }
 }
 ```
 
@@ -584,7 +631,9 @@ for (int j = displayCount; j < 4; j++)
 - `SceneExtention.GetItemTooltip`：含 LINQ，Edit Method (C#) 必炸；Icons 渲染统一走 ① 的循环，这里无需动。
 - `ItemHoverTooltip.GetTooltipByItem`：全仓库无调用者（死代码），静态类无法被 Unity 事件/SendMessage 调用。
 
-**验证**：悬停 50 孔装备 tooltip 只显示 4 个孔图标、无溢出；背包格子图标正常无报错；拆宝石仍能一次拆完全部 50 孔。
+**改完**：File → Save Module 覆盖 DLL → 进游戏。
+
+**实测（2026-10-07）**：悬停 50 孔装备 tooltip 只显示 4 个孔图标、无溢出；背包格子图标正常无报错；拆宝石仍能一次拆完全部 50 孔。测试成功，暂无 bug。
 
 ---
 
@@ -632,6 +681,6 @@ for (int j = displayCount; j < 4; j++)
 | 技能 | UI 封顶 | `LevelBarController.Init` + `ColorPicker.GetGradientColor` | 3bc6ca2→0327d89 |
 | 装备 | 饰品镶宝石（插槽生成） | `ItemExtensions.SocketGenerations` | 本次 v4 补标 |
 | 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
-| 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01） |
+| 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01），v13 已改已验证 |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
