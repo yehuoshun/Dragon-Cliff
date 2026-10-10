@@ -156,6 +156,25 @@ public class Shop : IBuildingProfile
 	}
 
 	// Token: 0x060020B2 RID: 8370 RVA: 0x000E2A48 File Offset: 0x000E0E48
+	// ★MOD 商店固定出售材料（2026-10-11 标注，见 change.md §5.1）：
+	// 改法：dnSpy 打开 Assembly-CSharp.dll → 类 Shop → 方法 GetCommodities()
+	//   Edit Method (C#) 或 Edit Method Body (IL)，在本方法内任意位置追加：
+	//     list.Add(new Commodity {
+	//         ResourceType = ResourceType.FragmentOfDemon,   // 恶魔碎片
+	//         Amount = 10,                                  // 每档数量（自定）
+	//         NumberOfDaysTillExpiration = int.MaxValue,    // 永久不过期
+	//         Items = new List<Item>(),                     // 纯资源，无需 ItemGenerate
+	//         PricePerItem = 5000.0                         // 金币单价（自定）
+	//     });
+	//     list.Add(new Commodity {
+	//         ResourceType = ResourceType.InfusedPowder,    // 灌注粉末（"魔晶粉"候选）
+	//         Amount = 10,
+	//         NumberOfDaysTillExpiration = int.MaxValue,
+	//         Items = new List<Item>(),
+	//         PricePerItem = 10000.0
+	//     });
+	// 要点：AshPerItem 不赋值(null) → Purchase 走金币分支；固定商品不在 this.Commodities，买完不消失
+	// 注：材料无 CreationTemplate，无 GetValueBase，价格只能写死；若"魔晶粉"不是 InfusedPowder，对照游戏图鉴换枚举名
 	public List<Commodity> GetCommodities()
 	{
 		List<Commodity> list = new List<Commodity>();

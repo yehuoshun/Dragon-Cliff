@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-10-07（v13，§4.5 龙晶 50 孔 UI 封顶改法核对完毕：两处已改，游戏内测试通过暂无 bug）
+> 版本：2026-10-11（v18，§5.1 商店固定出售恶魔碎片/灌注粉末改法：已定位，待老板改 DLL）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -688,7 +688,58 @@ public bool CanTeamSetUpgrade()
 
 ---
 
-# 五、风险与副作用清单（改前必读）
+# 五、商店类
+
+## 5.1 商店固定出售 恶魔碎片 + 灌注粉末（金币购买）
+
+**目的**：城镇商店永久上架「恶魔碎片」「灌注粉末」（装备强化/套装升级材料，原版只能靠刷怪/任务掉），金币直接买。
+
+**背景**：商店 UI 的商品列表 = `Shop.GetCommodities()` 临时合成：难度消耗品（药水）+ 难度使用品（面包等）+ 无尽地牢神秘钥匙 + `endlessDungeonDf.GetAdvancedCommodities()` + `this.Commodities`（随机饰品，`RefreshStock` 填充）。商品购买走 `Shop.Purchase(Commodity)`：`AshPerItem` 为空 → **金币**支付（`SpendMoney`）+ `BatchResourceUpdate` 加资源。材料（FragmentOfDemon 等）是纯资源、无 CreationTemplate（无 `GetValueBase`），所以**价格必须写死**。
+
+**位置**：`Shop` 类 → `GetCommodities()`（Assembly-CSharp.dll / Shop.cs:159）
+
+**修改前**（原版，方法末尾）：
+
+```csharp
+        list.AddRange(endlessDungeonDf.GetAdvancedCommodities());
+        list.AddRange(this.Commodities);
+        return (from r in list
+        orderby r.ResourceType.GetResourceCategory() descending
+        select r).ToList<Commodity>();
+```
+
+**修改后**（Edit Method (C#)，在 `list.AddRange(df.GetDifficultyRelatedConsumables()...);` 之后任意位置插入）：
+
+```csharp
+        // ★MOD：商店固定出售 恶魔碎片 + 灌注粉末（金币购买，永久库存，买完不消失）
+        list.Add(new Commodity
+        {
+            ResourceType = ResourceType.FragmentOfDemon,   // 恶魔碎片（实锤：Item.cs 注释同款）
+            Amount = 10,                                   // 每档数量，自定
+            NumberOfDaysTillExpiration = int.MaxValue,     // 永久不过期（同消耗品写法）
+            Items = new List<Item>(),                      // 纯资源直加，无需 ItemGenerate
+            PricePerItem = 5000.0                          // 金币单价，自定
+        });
+        list.Add(new Commodity
+        {
+            ResourceType = ResourceType.InfusedPowder,     // 灌注粉末（"魔晶粉"最可能对应项，见下方注意事项）
+            Amount = 10,
+            NumberOfDaysTillExpiration = int.MaxValue,
+            Items = new List<Item>(),
+            PricePerItem = 10000.0
+        });
+```
+
+**注意**：
+1. `AshPerItem` **不要赋值**（保持 null）→ `Shop.Purchase` 走金币分支（`SpendMoney`），否则会走灰烬（AshOfHope）支付。
+2. 固定商品不在 `this.Commodities` 里 → `Purchase` 里的移除逻辑不生效 → **每次打开商店都在，无限买**（这正是要的效果）。
+3. 若 Edit Method (C#) 报错（含 LINQ/lambda 时易失败），改 **Edit Method Body** 手写 IL：`newobj Commodity::.ctor()` → `dup` → 依次 `ldstr`/`ldc` 设字段（AshPerItem 跳过）→ `list.Add(...)`。
+4. **"魔晶粉"名称待确认**：源码无中文名（本地化在游戏资源里）。最强候选 = `ResourceType.InfusedPowder`（灌注粉末）——装备强化消耗里与恶魔碎片成对出现（`Item.cs`：`FragmentOfDemon + InfusedPowder` 同组）。若游戏内"魔晶粉"实为其它材料，对照图鉴改枚举：`CrystalStone`（水晶石）/`CrystalOfWoodenForest`（木林水晶）等。
+5. 价格无参考公式（材料无 GetValueBase），上例 5000/10000 为建议值，自行调节。
+
+---
+
+# 六、风险与副作用清单（改前必读）
 
 ## 4.1 必远古 → 铁匠合成/合成任务卡死 ⚠️（当前最大坑）
 
@@ -734,5 +785,6 @@ public bool CanTeamSetUpgrade()
 | 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
 | 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01），v13 已改已验证 |
 | 装备 | 饰品/护身符强化上限 100 级 | `Item.CanTeamSetUpgrade` | 本次 v14 标注（注释块 2026-10-07），待改 DLL |
+| 商店 | 固定出售恶魔碎片/灌注粉末 | `Shop.GetCommodities` | 本次 v18 标注（注释块 2026-10-11），待改 DLL |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
