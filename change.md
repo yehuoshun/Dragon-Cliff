@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-10-11（v18，§5.1 商店固定出售恶魔碎片/灌注粉末改法：已定位，待老板改 DLL）
+> 版本：2026-10-11（v19，§5.1 商店固定出售恶魔碎片/灌注粉末：已改 DLL，游戏内测试通过 ✅）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -692,6 +692,8 @@ public bool CanTeamSetUpgrade()
 
 ## 5.1 商店固定出售 恶魔碎片 + 灌注粉末（金币购买）
 
+**状态：✅ 已改 + 游戏内测试通过（2026-10-11）**
+
 **目的**：城镇商店永久上架「恶魔碎片」「灌注粉末」（装备强化/套装升级材料，原版只能靠刷怪/任务掉），金币直接买。
 
 **背景**：商店 UI 的商品列表 = `Shop.GetCommodities()` 临时合成：难度消耗品（药水）+ 难度使用品（面包等）+ 无尽地牢神秘钥匙 + `endlessDungeonDf.GetAdvancedCommodities()` + `this.Commodities`（随机饰品，`RefreshStock` 填充）。商品购买走 `Shop.Purchase(Commodity)`：`AshPerItem` 为空 → **金币**支付（`SpendMoney`）+ `BatchResourceUpdate` 加资源。材料（FragmentOfDemon 等）是纯资源、无 CreationTemplate（无 `GetValueBase`），所以**价格必须写死**。
@@ -785,6 +787,6 @@ public bool CanTeamSetUpgrade()
 | 装备 | 饰品镶宝石（可镶判定） | `Item.GetSocketableGems` | 本次 v4 补标 |
 | 装备 | 龙晶 50 孔 UI 封顶（显示 4 孔） | `TooltipController.AssignValues` + `InventoryItemController.Init` | 本次 v4.5 标注（注释块 2026-10-01），v13 已改已验证 |
 | 装备 | 饰品/护身符强化上限 100 级 | `Item.CanTeamSetUpgrade` | 本次 v14 标注（注释块 2026-10-07），待改 DLL |
-| 商店 | 固定出售恶魔碎片/灌注粉末 | `Shop.GetCommodities` | 本次 v18 标注（注释块 2026-10-11），待改 DLL |
+| 商店 | 固定出售恶魔碎片/灌注粉末 | `Shop.GetCommodities` | 本次 v18 标注（注释块 2026-10-11）→ v19 已改已验证 |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
