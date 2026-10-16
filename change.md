@@ -1,6 +1,6 @@
 # 龙崖（Dragon Cliff）MOD 修改教程
 
-> 版本：2026-10-11（v19，§5.1 商店固定出售恶魔碎片/灌注粉末：已改 DLL，游戏内测试通过 ✅）
+> 版本：2026-10-16（v22，§7 角色等级类：等级上限 90→100 万 + 60 级后修炼点固定 30 万/级，int→long 双版本均游戏内验证 ✅）
 > 方法：dnSpy 改 `Assembly-CSharp.dll`（patch 路线已废弃）
 > 铁律：改前备份 DLL；源码仓库只标注不改逻辑，一切修改以本教程为准
 > 说明：每章均含【修改前】原版代码与【修改后】目标代码，可对照还原
@@ -15,6 +15,8 @@
 | **Edit Method vs Edit Class** | 含 LINQ/lambda 的方法（如 `SchoolMenuController.UpdatePages`、`GetListByFurnaceTab`）**Edit Method (C#) 必失败**（报 Invalid token `'<'` / CS0121 歧义），只能右键 **Edit Method Body** 改 IL |
 | **纯常量方法**（如 GetMaxLevel、GetGrade） | 可直接 Edit Method (C#) |
 | **改 IL 常量** | `ldc.i4.5` 这种直接点数值改；用上方 C# 注释行定位，别改错位置 |
+| **改字段类型前先关 Search** | Edit Field 改类型（如 int→long）会重新生成访问器方法、token 变化，搜索面板缓存引用旧 token → NRE 弹窗**死循环**（关不掉，只能强杀 dnSpy 进程重开）。实测：先关掉所有 Search 标签页再动字段，无弹窗 |
+| **改 .locals 变量类型（繁琐）** | 方法体 IL 开头 `.locals init (...)` 行 → 右键 Edit Instruction… 弹窗里 `[n] 类型` 格 → 清除 → 直接**输入 `int64`** → 下拉选 **long**。逐个槽位改，不用的槽位别碰（2026-10-16 实操验证） |
 | **保存** | File → Save Module，重进游戏生效 |
 | **旧数据不追溯** | 已生成的居民/存档数值已定死，改代码只影响新生成 |
 
@@ -771,6 +773,85 @@ public bool CanTeamSetUpgrade()
 
 ---
 
+# 七、角色等级类
+
+## 7.1 等级上限 90 → 999（int 版，已验证 ✅）
+
+**目的**：突破英雄等级上限 90，并消耗存量修炼点（60 级后指数爆炸的需求曲线改为固定值）。
+
+**位置**：
+- `UnitExtensions.MaxAdventurerLevel`（静态构造 `.cctor` 里 `ldc.i4.s 90`）——等级上限
+- `UnitExtensions.SetupLevelConfigurations()`（cs:209-231）——经验表生成
+
+**原版公式**（i 从 0 开始，`Level = i + 1`）：
+- num=150（1 级需求 150）、num2=100（60 级前每级 +100）、num3=10000（60 级后每级 +10000）、num4=-1
+- `i<59: num += num2`；否则 `num += num3; num3 += num3/4`（+25% 复利，指数爆炸源）
+- 原表只生成到 Lv92（循环 `i<=91`）
+
+**int 版改动**（dnSpy IL）：
+1. 循环 `i<=91` → `ldc.i4 999`
+2. `num += num3` 的 IL 首条 `ldloc.0` → `ldc.i4.0`（等价 `num = 0 + num3`，去掉累计）
+3. 删 `num3 += num3/4` 的 6 条 IL（`ldloc.2; ldloc.2; ldc.i4.4; div; add; stloc.2`）
+4. `.cctor` 里 90 → `ldc.i4 999`
+5. **坏档修复**：num3 初值 `10000` → `ldc.i4 300000`（30 万/级），表覆盖 2.82 亿 > 旧档英雄最高经验 1.6 亿 → 老板确认成功 ✅
+
+**效果**：60 级起每级固定 30 万修炼点，永不再涨。天赋点未改（`LevelUpLogic` 的 `num2 <= 85`、重置 cap `17` 保持原样，天赋锁 17 点）。
+
+## 7.1.1 int→long 升级（上限 100 万，已验证 ✅ 2026-10-16）
+
+int 版上限被经验表 int 溢出锁死（表累计 > 21.4 亿错乱），改 long 后唯一瓶颈变内存。改动清单：
+
+| # | 位置 | 改 |
+|---|---|---|
+| 1 | `UnitLevelConfiguration.FromExp` / `ToExp` | 字段 int → long（Edit Field，**先关所有 Search 标签页**） |
+| 2 | `SetupLevelConfigurations()` | `.locals` [0]-[3] → int64；常量全 `ldc.i8`（150/100/300000/-1/1/0）；`set_FromExp(int32)`/`set_ToExp(int32)` → int64；循环 `ldc.i4 1000000`（i<=1000000 → Lv1-1000001）；**循环计数器 i 保持 int32** |
+| 3 | ~~`GetLevelUpRequiredExp()` 返回 long~~ **不需要** | 它返回「升下一级所需经验」= 单级成本 ≤30 万，`(int)` cast **永不上溢** → 签名与 HeroMenuController 调用方都保持 int，只修 callvirt |
+| 4 | `TryUpgrade10Level()` | 2× callvirt `get_FromExp` int32→int64；循环 `ldc.i4.s 10` → `ldc.i4 100000`（⚠️ **未改**，2026-10-16 老板确认；不改则升到 100 万要点 10 万次） |
+| 5 | `.cctor` `MaxAdventurerLevel` | → `ldc.i4 1000000`（100 万） |
+
+**⚠️ 字段改类型后的连带修复（漏了 = InvalidProgramException，dnSpy 反编译也 NRE 炸）**：
+
+本 DLL 的属性是**访问器版**，旧 IL 是 `callvirt instance int32 get_FromExp()` —— 字段变 long 后实际 getter 返回 int64，**call 签名不匹配**即非法 IL。Edit Method (C#) 对这些方法**不可用**（反编译就炸），只能 **Edit Method Body → Edit Instruction → 重选操作数**（dnSpy 自动带出 int64）：
+
+| 方法 | 要改的 callvirt |
+|---|---|
+| `AdventurerProfile.TryUpgrade10Level` | 2× `get_FromExp` int32→int64（IL_0029/IL_0035） |
+| `AdventurerProfile.UpgradeLevel` | 1× `get_FromExp` int32→int64 |
+| `AdventurerProfile.GetLevelUpRequiredExp` | 1× `get_FromExp` int32→int64（返回类型/conv.i4 不动） |
+| `AdventurerProfile.CanUpgradeLevel` | 1× `get_FromExp` int32→int64 |
+| `UnitExtensions` lambda `<>m__0`（嵌套类 `<GetAdventurerLevelConfig>c__AnonStorey3`） | 2×（`get_FromExp` + `get_ToExp`）int32→int64 |
+| `SetupLevelConfigurations` | `set_FromExp(int32)` / `set_ToExp(int32)` → int64（配合 num 系列转 long + `ldc.i8`） |
+
+**⚠️ 两个「1」只改一个（实战踩过，症状=无法开始游戏）**：`FromExp = num4 + 1` 的 1 换 `ldc.i8 1`；但 `Level = i + 1` 的 1 **必须保持 `ldc.i4.1`**（i 是 int32、`set_Level(int32)` 收 int32）。两个都换 → `add` int32+int64 类型不匹配 → 静态构造执行即 InvalidProgramException → 游戏启动直接挂。
+
+**已确认不改**：`Experience` 字段本来就是 long；`CanAdventurerLevelUp`、`GetAdventurerLevelConfig` 主方法、`.cctor` 字典初始化不碰字段 → 存档格式零变化。
+
+**⚠️ 必读大坑：旧档坏档（实战踩过）**
+
+`GetAdventurerLevelConfig(exp)` 用 `First()` 查经验表，**经验超出表的最大 ToExp 直接抛异常**。存档加载时对每个英雄调 `GetLevel()` → 超表 = 坏档。
+
+改表后最大 ToExp 必须覆盖旧档所有英雄已存经验（原版满级 90 = 1.6 亿）：
+- `num3 = 10000` 时表只覆盖到 959 万 → 旧 Lv61+ 英雄全超表 → **坏档** ❌
+- **实测安全值：num3 初值 → 300000**（30 万/级）✅
+- **铁律：num3 只能涨不能降**——英雄已存经验一旦超过新表最大 ToExp 就坏档
+
+**上限边界（int 版和 long 版都要记）**：
+
+| 版本 | 推荐最大值 | 瓶颈 | 说明 |
+|---|---|---|---|
+| int（不转 long） | **7,200** | 表累计经验 int 溢出 | 30 万/级时累计 21.42 亿，距 int.MaxValue 余 530 万；再高 `num4 += num` 溢出变负，表错乱 |
+| long（转 long 后） | **1,000,000** | 内存 | 表条目 × 40B ≈ 40-60MB 安全；500 万 = 200MB ⚠️ 危险；1000 万 = 400MB+ ❌ 别碰 |
+
+**连带效果（num3 = 300000 时）**：
+
+| 项 | 数值 |
+|---|---|
+| 61 级起每级修炼点 | 30 万（固定，永不再涨） |
+| 100 万级累计经验 | 3000 亿（long 距上限差 7 个数量级） |
+| 查表性能 | `First()` 线性扫描，100 万条目 1-2ms，无感 |
+
+**状态**：int 版（999）已改 DLL 游戏内验证 ✅；**long 版（100 万）全部完成并游戏内验证 ✅（2026-10-16）**：正常启动、读档、升级、存档全通过。
+
 # 附录：修改点速查（源码标注位置）
 
 | 分类 | 功能 | 类/方法 | 标注 commit |
@@ -789,4 +870,6 @@ public bool CanTeamSetUpgrade()
 | 装备 | 饰品/护身符强化上限 100 级 | `Item.CanTeamSetUpgrade` | 本次 v14 标注（注释块 2026-10-07），待改 DLL |
 | 商店 | 固定出售恶魔碎片/灌注粉末 | `Shop.GetCommodities` | 本次 v18 标注（注释块 2026-10-11）→ v19 已改已验证 |
 | 合成 | 卡合成警示（已废弃方案） | `BuildingExtensions.IsCombineable` | 92a79be→ea7c976 |
+| 角色 | 等级上限 90→999（int）/ 100 万（long） | `UnitExtensions.MaxAdventurerLevel` + `.cctor` | 本次 v21-v22 标注（注释块 2026-10-15/16），双版本均已改已验证 |
+| 角色 | 60 级后修炼点固定 30 万/级（去指数） | `UnitExtensions.SetupLevelConfigurations`（num3=300000） | 本次 v21-v22 标注（同上） |
 | 教程 | 本文件 | `change.md` | 54471ad→2dbb4ad（v3 重排，v4 加装备类） |
